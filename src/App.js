@@ -1,12 +1,10 @@
-// src/App.js
 import React, { useEffect, useState } from "react";
 import { collection, onSnapshot, doc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
-import './App.css';
+import "./App.css";
 import "leaflet/dist/leaflet.css";
 import UserTracksMap from "./Map/UserTracksMap";
-// import UserTracksGmaps from "./Map/UserTracksGmaps";
 
 function App() {
   const [items, setItems] = useState([]);
@@ -16,18 +14,34 @@ function App() {
   const [interval, setInterval] = useState("");
   const [isRecording, setIsRecording] = useState(true);
   const [storedPassword, setStoredPassword] = useState("");
+  const [sessionTime, setSessionTime] = useState(30); // default: 30 minutes
 
   const [originalConfig, setOriginalConfig] = useState({
     timeStart: "",
     timeEnd: "",
     interval: "",
     isRecording: true,
-    password: ""
+    password: "",
+    sessionTime: 30
   });
 
   const [inputPassword, setInputPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
 
+  // Check session on load
+  useEffect(() => {
+    const authStatus = sessionStorage.getItem("authenticated");
+    const expiry = sessionStorage.getItem("authExpiry");
+
+    if (authStatus === "true" && expiry && Date.now() < Number(expiry)) {
+      setAuthenticated(true);
+    } else {
+      sessionStorage.removeItem("authenticated");
+      sessionStorage.removeItem("authExpiry");
+    }
+  }, []);
+
+  // Fetch user data
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
@@ -42,6 +56,7 @@ function App() {
     return () => unsubscribe();
   }, []);
 
+  // Fetch remote config
   useEffect(() => {
     const configRef = doc(db, "settings", "config");
 
@@ -51,15 +66,17 @@ function App() {
         setTimeStart(configData.timeStart || "");
         setTimeEnd(configData.timeEnd || "");
         setInterval(configData.interval || "");
-        setIsRecording(configData.isRecording ?? true); // default to true if missing
+        setIsRecording(configData.isRecording ?? true);
         setStoredPassword(configData.password || "");
+        setSessionTime(configData.sessionTime ?? 30);
 
         setOriginalConfig({
           timeStart: configData.timeStart || "",
           timeEnd: configData.timeEnd || "",
           interval: configData.interval || "",
           isRecording: configData.isRecording ?? true,
-          password: configData.password || ""
+          password: configData.password || "",
+          sessionTime: configData.sessionTime ?? 30
         });
       }
     }, (error) => {
@@ -101,6 +118,7 @@ function App() {
         interval,
         isRecording,
         password: storedPassword,
+        sessionTime,
         updatedAt: new Date().toISOString()
       });
       alert("Config saved to Firestore!");
@@ -113,6 +131,9 @@ function App() {
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     if (inputPassword === storedPassword) {
+      const expireTime = Date.now() + sessionTime * 60 * 1000;
+      sessionStorage.setItem("authenticated", "true");
+      sessionStorage.setItem("authExpiry", expireTime.toString());
       setAuthenticated(true);
     } else {
       alert("Incorrect Password");
@@ -141,7 +162,32 @@ function App() {
   return (
     <div style={{ padding: "20px" }}>
       <form onSubmit={handleSaveConfig} style={{ marginBottom: 20 }}>
-        <h2>Time Settings</h2>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "10px"
+        }}>
+          <h2 style={{ margin: 0 }}>Time Settings</h2>
+          <button
+            type="button"
+            onClick={() => {
+              sessionStorage.removeItem("authenticated");
+              sessionStorage.removeItem("authExpiry");
+              window.location.reload();
+            }}
+            style={{
+              backgroundColor: "#f44336",
+              color: "white",
+              border: "none",
+              padding: "6px 12px",
+              borderRadius: "4px",
+              cursor: "pointer"
+            }}
+          >
+            Logout
+          </button>
+        </div>
 
         <div
           style={{
@@ -187,7 +233,7 @@ function App() {
 
           <div style={{ flex: 1, minWidth: "150px" }}>
             <label>Enable Recording:</label><br />
-            <label className="switch">
+            <label className="switch" style={{ marginTop: "4px", display: "inline-block" }}>
               <input
                 type="checkbox"
                 checked={isRecording}
@@ -204,7 +250,6 @@ function App() {
       </form>
 
       {items && <UserTracksMap data={items} />}
-      {/* {items && <UserTracksGmaps data={items} />} */}
     </div>
   );
 }
