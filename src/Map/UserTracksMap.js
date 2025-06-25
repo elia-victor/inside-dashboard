@@ -31,7 +31,7 @@ export default function UserTracksMap({ data }) {
             <Polyline
               positions={positions}
               color={getColor(idx)}
-              weight={15}
+              weight={5}
               opacity={0.9} 
             />
 
