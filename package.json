@@ -1,8 +1,8 @@
 {
   "name": "inside-dashboard",
-  "homepage": "https://elia-victor.github.io/inside-dashboard",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://elia-victor.github.io/inside-dashboard",
   "dependencies": {
     "@react-google-maps/api": "^2.20.7",
     "@testing-library/dom": "^10.4.0",
