@@ -3,21 +3,25 @@ import React, { useEffect, useState } from "react";
 import { collection, onSnapshot, doc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
+import './App.css';
 import "leaflet/dist/leaflet.css";
 import UserTracksMap from "./Map/UserTracksMap";
 // import UserTracksGmaps from "./Map/UserTracksGmaps";
 
 function App() {
   const [items, setItems] = useState([]);
+
   const [timeStart, setTimeStart] = useState("");
   const [timeEnd, setTimeEnd] = useState("");
   const [interval, setInterval] = useState("");
+  const [isRecording, setIsRecording] = useState(true);
   const [storedPassword, setStoredPassword] = useState("");
 
   const [originalConfig, setOriginalConfig] = useState({
     timeStart: "",
     timeEnd: "",
     interval: "",
+    isRecording: true,
     password: ""
   });
 
@@ -26,7 +30,7 @@ function App() {
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
+      const data = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data()
       }));
@@ -47,12 +51,14 @@ function App() {
         setTimeStart(configData.timeStart || "");
         setTimeEnd(configData.timeEnd || "");
         setInterval(configData.interval || "");
+        setIsRecording(configData.isRecording ?? true); // default to true if missing
         setStoredPassword(configData.password || "");
 
         setOriginalConfig({
           timeStart: configData.timeStart || "",
           timeEnd: configData.timeEnd || "",
           interval: configData.interval || "",
+          isRecording: configData.isRecording ?? true,
           password: configData.password || ""
         });
       }
@@ -66,7 +72,8 @@ function App() {
   const hasChanges =
     timeStart !== originalConfig.timeStart ||
     timeEnd !== originalConfig.timeEnd ||
-    interval !== originalConfig.interval;
+    interval !== originalConfig.interval ||
+    isRecording !== originalConfig.isRecording;
 
   const handleSaveConfig = async (e) => {
     e.preventDefault();
@@ -92,6 +99,7 @@ function App() {
         timeStart,
         timeEnd,
         interval,
+        isRecording,
         password: storedPassword,
         updatedAt: new Date().toISOString()
       });
@@ -135,14 +143,16 @@ function App() {
       <form onSubmit={handleSaveConfig} style={{ marginBottom: 20 }}>
         <h2>Time Settings</h2>
 
-        <div style={{
-          display: "flex",
-          gap: "20px",
-          alignItems: "flex-end",
-          marginBottom: "20px",
-          width: "100%",
-          flexWrap: "wrap"
-        }}>
+        <div
+          style={{
+            display: "flex",
+            gap: "20px",
+            alignItems: "flex-end",
+            marginBottom: "20px",
+            width: "100%",
+            flexWrap: "wrap"
+          }}
+        >
           <div style={{ flex: 1, minWidth: "150px" }}>
             <label>Time Start:</label><br />
             <input
@@ -168,11 +178,23 @@ function App() {
             <input
               type="number"
               min="0.01"
-              step="0.01" // Allows decimal input
+              step="0.01"
               value={interval}
               onChange={(e) => setInterval(e.target.value)}
               style={{ width: "100%" }}
             />
+          </div>
+
+          <div style={{ flex: 1, minWidth: "150px" }}>
+            <label>Enable Recording:</label><br />
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={isRecording}
+                onChange={(e) => setIsRecording(e.target.checked)}
+              />
+              <span className="slider"></span>
+            </label>
           </div>
 
           <button type="submit" disabled={!hasChanges}>
